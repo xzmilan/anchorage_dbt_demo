@@ -1,0 +1,16 @@
+# dbt Mesh: declares that this project (reporting_statements) depends on
+# anchorage_data_platform (the Platform team's project).
+#
+# In production with dbt Cloud, this enables cross-project ref():
+#   {{ ref('anchorage_data_platform', 'stg_custody_positions') }}
+#
+# Locally (dbt Core without Cloud metadata service), we resolve the same
+# tables via source() definitions in models/sources.yml, which point directly
+# to the BigQuery datasets that anchorage_data_platform built.
+#
+# Run order:
+#   1. cd ../anchorage_data_platform && dbt seed && dbt run
+#   2. cd ../anchorage_dbt_demo      && dbt run && dbt test
+
+projects:
+  - name: anchorage_data_platform

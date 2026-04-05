@@ -1,0 +1,21 @@
+customer_id,customer_name,customer_type,jurisdiction,onboarded_date,kyc_status,risk_tier,is_active
+CUST001,Blackstone Digital Assets Fund,hedge_fund,US,2022-01-15,approved,tier_1,True
+CUST002,Fidelity Crypto Strategies LP,hedge_fund,US,2022-03-10,approved,tier_1,True
+CUST003,GIC Singapore Digital,sovereign_wealth,SG,2022-06-01,approved,tier_1,True
+CUST004,CalPERS Digital Assets,pension_fund,US,2022-08-20,approved,tier_1,True
+CUST005,ARK Digital Asset Fund,asset_manager,US,2022-09-05,approved,tier_2,True
+CUST006,Yale Endowment Digital,endowment,US,2022-11-01,approved,tier_1,True
+CUST007,Bridgewater Crypto Alpha,hedge_fund,US,2023-01-10,approved,tier_2,True
+CUST008,ADIA Digital Assets,sovereign_wealth,AE,2023-02-15,approved,tier_1,True
+CUST009,Harvard Management Digital,endowment,US,2023-03-20,approved,tier_1,True
+CUST010,Grayscale Institutional LLC,asset_manager,US,2023-04-01,approved,tier_2,True
+CUST011,Tiger Global Crypto Fund,hedge_fund,US,2023-05-10,approved,tier_2,True
+CUST012,Ontario Teachers Digital,pension_fund,CA,2023-06-15,approved,tier_1,True
+CUST013,A16Z Digital Fund III,venture_capital,US,2023-07-01,approved,tier_2,True
+CUST014,Swiss Re Digital Assets,insurance,CH,2023-08-20,approved,tier_2,True
+CUST015,Nexus Quant Crypto LP,hedge_fund,US,2023-09-05,approved,tier_3,True
+CUST016,Nordic Pension Digital,pension_fund,SE,2023-10-10,approved,tier_2,True
+CUST017,Commonwealth Digital Trust,endowment,US,2023-11-15,approved,tier_3,True
+CUST018,DeFi Quant Partners,hedge_fund,US,2024-01-10,pending_review,tier_3,True
+CUST019,Wellington Digital Growth,asset_manager,US,2024-02-20,approved,tier_2,True
+CUST020,Macro Digital Strategies,hedge_fund,US,2024-03-01,approved,tier_3,True

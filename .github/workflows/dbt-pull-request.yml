@@ -1,0 +1,182 @@
+name: Reporting — Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  DBT_PROFILES_DIR: ~/.dbt
+  GCP_PROJECT_ID: sigma-method-453023-a4
+
+jobs:
+  changed-models:
+    name: Detect Changed Models
+    runs-on: ubuntu-latest
+    outputs:
+      changed_models: ${{ steps.set-matrix.outputs.changed_models }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find changed model files
+        id: set-matrix
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep "^models/" | tr '\n' ',' | sed 's/,$//')
+          echo "changed_models=$CHANGED" >> $GITHUB_OUTPUT
+
+  test-changed:
+    name: Test Changed Models
+    runs-on: ubuntu-latest
+    needs: changed-models
+    if: needs.changed-models.outputs.changed_models != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir -r requirements.txt
+          pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          anchorage_reporting_demo:
+            outputs:
+              ci:
+                type: bigquery
+                project: sigma-method-453023-a4
+                dataset: AnchDigitalDemo_ci
+                method: service-account
+                keyfile: /tmp/gcp-sa-key.json
+                location: US
+                threads: 4
+                timeout_seconds: 300
+            target: ci
+          EOF
+
+      - name: Assemble calc views (CI)
+        run: python generate_calc_views.py
+
+      - name: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
+
+      - name: dbt run changed models
+        run: |
+          dbt run \
+            --select ${{ needs.changed-models.outputs.changed_models }} \
+            --profiles-dir ~/.dbt \
+            --target ci
+
+      - name: dbt test changed models
+        run: |
+          dbt test \
+            --select ${{ needs.changed-models.outputs.changed_models }} \
+            --profiles-dir ~/.dbt \
+            --target ci
+
+  code-quality:
+    name: SQL Lint + YAML Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir \
+            "sqlfluff==4.0.4" \
+            "sqlfluff-templater-dbt==4.0.4" \
+            "dbt-core>=1.8.0,<2.0.0" \
+            "dbt-bigquery>=1.8.0,<2.0.0" \
+            yamllint \
+            "chardet==5.2.0"
+          pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
+
+      - name: SQLFluff lint — Calc_Anchorage
+        run: |
+          echo "=== Calc_Anchorage Lint ===" > sqlfluff-report.txt
+          sqlfluff lint models/Calc_Anchorage/ \
+            --dialect bigquery \
+            --templater jinja \
+            --format human >> sqlfluff-report.txt 2>&1 || true
+
+      - name: SQLFluff lint — Widetable_Anchorage
+        run: |
+          echo "" >> sqlfluff-report.txt
+          echo "=== Widetable_Anchorage Lint ===" >> sqlfluff-report.txt
+          sqlfluff lint models/Widetable_Anchorage/ \
+            --dialect bigquery \
+            --templater jinja \
+            --format human >> sqlfluff-report.txt 2>&1 || true
+
+      - name: SQLFluff lint — Business_View_Anchorage
+        run: |
+          echo "" >> sqlfluff-report.txt
+          echo "=== Business_View_Anchorage Lint ===" >> sqlfluff-report.txt
+          sqlfluff lint models/Business_View_Anchorage/ \
+            --dialect bigquery \
+            --templater jinja \
+            --format human >> sqlfluff-report.txt 2>&1 || true
+
+      - name: Generate per-rule summary
+        run: |
+          sqlfluff lint models/ \
+            --dialect bigquery \
+            --templater jinja \
+            --format json > sqlfluff-output.json 2>&1 || true
+
+          echo "" >> sqlfluff-report.txt
+          echo "=== Per-Rule Violation Summary ===" >> sqlfluff-report.txt
+          python3 scripts/lint_summary.py | tee -a sqlfluff-report.txt
+
+          cat sqlfluff-report.txt
+
+      - name: Upload SQLFluff report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlfluff-report-reporting
+          path: sqlfluff-report.txt
+
+      - name: YAML lint
+        run: yamllint -c .yamllint models/ || true
+
+  dependencies:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate requirements install
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir -r requirements.txt --dry-run

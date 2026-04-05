@@ -1,0 +1,35 @@
+anchorage_reporting_demo:
+  target: dev
+  outputs:
+
+    # ── Primary: BigQuery ──────────────────────────────────────────────────
+    # Requires: gcloud auth application-default login
+    dev:
+      type: bigquery
+      method: oauth
+      project: sigma-method-453023-a4
+      dataset: AnchDigitalDemo
+      location: US
+      threads: 4
+      timeout_seconds: 300
+
+    # ── CI: BigQuery via service account ───────────────────────────────────
+    # Requires GitHub secret: BIGQUERY_KEYFILE_JSON
+    ci:
+      type: bigquery
+      method: service-account
+      project: sigma-method-453023-a4
+      keyfile: "{{ env_var('BIGQUERY_KEYFILE_PATH') }}"
+      dataset: AnchDigitalDemo_ci
+      location: US
+      threads: 4
+      timeout_seconds: 300
+
+    # ── Local fallback: DuckDB (no GCP auth needed) ────────────────────────
+    # dbt run --target local --profiles-dir .
+    local:
+      type: duckdb
+      path: "dev.duckdb"
+      threads: 4
+      schema: main
+

@@ -1,0 +1,222 @@
+name: Reporting — CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "models/**"
+      - "macros/**"
+      - "tests/**"
+      - "dbt_project.yml"
+      - "generate_calc_views.py"
+      - ".sqlfluff"
+      - ".github/workflows/**"
+      - "requirements.txt"
+  workflow_dispatch:
+
+env:
+  DBT_PROFILES_DIR: ~/.dbt
+  GCP_PROJECT_ID: sigma-method-453023-a4
+
+jobs:
+  build:
+    name: dbt Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir -r requirements.txt
+          pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          anchorage_reporting_demo:
+            outputs:
+              prod:
+                type: bigquery
+                project: sigma-method-453023-a4
+                dataset: AnchDigitalDemo
+                method: service-account
+                keyfile: /tmp/gcp-sa-key.json
+                location: US
+                threads: 4
+                timeout_seconds: 300
+            target: prod
+          EOF
+
+      # Step 1: assemble micro-calcs → BigQuery views in Calc_Anchorage
+      # This mirrors the AO CI/CD assembly step that runs before dbt.
+      - name: Assemble calc views (generate_calc_views.py)
+        run: python generate_calc_views.py
+
+      - name: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
+
+      - name: dbt compile
+        run: dbt compile --profiles-dir ~/.dbt --target prod
+
+      - name: Store artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-reporting-artifacts
+          path: |
+            target/
+            logs/
+
+  test:
+    name: dbt Test
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir -r requirements.txt
+          pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          anchorage_reporting_demo:
+            outputs:
+              prod:
+                type: bigquery
+                project: sigma-method-453023-a4
+                dataset: AnchDigitalDemo
+                method: service-account
+                keyfile: /tmp/gcp-sa-key.json
+                location: US
+                threads: 4
+                timeout_seconds: 300
+            target: prod
+          EOF
+
+      - name: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
+
+      - name: dbt test
+        run: |
+          dbt test \
+            --profiles-dir ~/.dbt \
+            --target prod \
+            --threads 4
+
+      - name: Store test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-reporting-test-results
+          path: target/
+
+  deploy:
+    name: Deploy — Calc, Widetable, Business View layers
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade --no-cache-dir pip setuptools
+          pip install --upgrade --no-cache-dir -r requirements.txt
+          pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          anchorage_reporting_demo:
+            outputs:
+              prod:
+                type: bigquery
+                project: sigma-method-453023-a4
+                dataset: AnchDigitalDemo
+                method: service-account
+                keyfile: /tmp/gcp-sa-key.json
+                location: US
+                threads: 4
+                timeout_seconds: 300
+            target: prod
+          EOF
+
+      # Deploy step 1: assemble micro-calcs into Calc_Anchorage views
+      - name: Assemble calc views
+        run: python generate_calc_views.py
+
+      - name: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
+
+      # Deploy step 2: dbt builds Widetable + Business_View layers
+      - name: dbt run — deploy all layers
+        run: |
+          dbt run \
+            --profiles-dir ~/.dbt \
+            --target prod \
+            --threads 4
+
+      - name: dbt test — verify production
+        run: |
+          dbt test \
+            --profiles-dir ~/.dbt \
+            --target prod \
+            --threads 4
+
+      - name: Notify deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'main',
+              environment: 'AnchDigitalDemo (production)',
+              auto_merge: false,
+              required_contexts: []
+            });

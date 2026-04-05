@@ -1,0 +1,29 @@
+name: anchorage_reporting_demo
+version: '1.0.0'
+config-version: 2
+
+profile: anchorage_reporting_demo
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  anchorage_reporting_demo:
+    Calc_Anchorage:
+      +schema: Calc_Anchorage
+      +materialized: table
+      +tags: ['calc_anchorage']
+    Widetable_Anchorage:
+      +schema: Widetable_Anchorage
+      +materialized: table
+      +tags: ['widetable_anchorage']
+    Business_View_Anchorage:
+      +schema: Business_View_Anchorage
+      +materialized: view
+      +tags: ['business_view_anchorage']
+

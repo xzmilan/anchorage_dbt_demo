@@ -1,0 +1,53 @@
+# Sources: Bronze tables published by the anchorage_data_platform project.
+#
+# These represent the dbt Mesh cross-project boundary.
+# With dbt Cloud this would be a cross-project ref():
+#   {{ ref('anchorage_data_platform', 'stg_custody_positions') }}
+#
+# With dbt Core we declare them as sources pointing to the BigQuery datasets
+# that anchorage_data_platform builds. Semantically identical — the data_platform
+# team owns and maintains these tables; we consume them via public contract.
+#
+# Contract guarantee: if data_platform changes column names or types on these
+# tables, their own CI fails before our Silver models are affected.
+
+version: 2
+
+sources:
+  - name: anchorage_data_platform
+    database: sigma-method-453023-a4
+    schema: Semantic_Anchorage
+    description: >
+      Semantic base layer — owned by the Platform team.
+      Published as public models with enforced contract on CustodyPositions.
+      All downstream calcs, widetables, and business views consume from here.
+    tables:
+      - name: Customers
+        description: "Institutional client master. KycStatus and IsActive gate reporting."
+      - name: ReferenceAssets
+        description: "Canonical asset reference. IsStakeable drives staking reports."
+      - name: CustodyPositions
+        description: "Position snapshots from custodian ledger. Enforced contract."
+      - name: StakingEvents
+        description: "Staking reward events. RewardState pending/settled drives NetPen."
+      - name: FeeEvents
+        description: "Fee events from billing system. BillingStatus drives accrual reporting."
+      - name: FinancialEvents
+        description: "Canonical financial event log. SOX append-only audit trail."
+
+  - name: anchorage_calc
+    database: sigma-method-453023-a4
+    schema: Calc_Anchorage
+    description: >
+      Assembled calc views — created by generate_calc_views.py before dbt run.
+      Each view joins all micro-calcs for a semantic base into a single flat view.
+      Run generate_calc_views.py whenever a new micro-calc is added.
+    tables:
+      - name: CustodyPositionsCalc
+        description: "All calcs for CustodyPositions: PositionPeriod."
+      - name: StakingEventsCalc
+        description: "All calcs for StakingEvents: EarnPeriod, IsSettled, UnbondingCategory."
+      - name: FeeEventsCalc
+        description: "All calcs for FeeEvents: FeePeriod, IsFullyBilled."
+      - name: FinancialEventsCalc
+        description: "All calcs for FinancialEvents: EventPeriod, IsPending."

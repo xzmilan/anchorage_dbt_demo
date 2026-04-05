@@ -1,0 +1,42 @@
+# CODEOWNERS — anchorage_dbt_demo
+#
+# This repo is a multi-team mono-repo. Folder ownership enforces that each
+# team can only merge changes to their own layer. No team can approve their
+# own PR — a second team's approval is required at layer boundaries.
+#
+# Team mapping:
+#   @platform-team    — owns Semantic_Anchorage (upstream contract) — read-only here
+#   @asset-team       — owns StakingEventsCalc micro-calcs (protocol logic)
+#   @finance-team     — owns FeeEventsCalc micro-calcs (billing logic)
+#   @reporting-team   — owns Business_View_Anchorage (client statements)
+#   @data-architect   — owns cross-cutting: sources.yml, widetables, CI/CD
+
+# Default: data architect reviews all changes
+*                                               @data-architect
+
+# sources.yml — cross-project contract boundary: any source change must be
+# approved by both data-architect and platform-team (they own what we're sourcing)
+models/sources.yml                              @data-architect @platform-team
+
+# Calc layer — split by domain team
+models/Calc_Anchorage/CustodyPositionsCalc/     @platform-team @data-architect
+models/Calc_Anchorage/StakingEventsCalc/        @asset-team @data-architect
+models/Calc_Anchorage/FeeEventsCalc/            @finance-team @data-architect
+models/Calc_Anchorage/FinancialEventsCalc/      @finance-team @data-architect
+
+# Widetable layer — mechanical, owned by data architect
+# No team may add logic here. Struct SELECT pattern only.
+models/Widetable_Anchorage/                     @data-architect
+
+# Business View layer — reporting team owns client-facing views
+# data-architect required for any new view or structural join change
+models/Business_View_Anchorage/                 @reporting-team @data-architect
+
+# ReconciliationSummary is compliance-gated — requires additional sign-off
+models/Business_View_Anchorage/ReconciliationSummary.sql  @reporting-team @finance-team @data-architect
+
+# Calc assembly script — any change affects ALL calc groups at deploy time
+generate_calc_views.py                          @data-architect @platform-team
+
+# CI/CD — DevOps + data architect only
+.github/workflows/                              @data-architect @devops-team

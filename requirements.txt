@@ -1,0 +1,17 @@
+# dbt core + BigQuery adapter
+dbt-core==1.8.9
+dbt-bigquery==1.8.3
+
+# SQLFluff linting
+sqlfluff==4.0.4
+sqlfluff-templater-dbt==4.0.4
+
+# GCP client (pinned via dbt-bigquery transitive; listed for clarity)
+google-cloud-bigquery>=3.13.0
+
+# Force-pin chardet — dbt-bigquery transitively pulls chardet 6.x which
+# breaks requests 2.32.x; 5.2.0 is the last compatible version.
+chardet==5.2.0
+
+# YAML linting (used in code-quality CI job)
+yamllint>=1.35.0

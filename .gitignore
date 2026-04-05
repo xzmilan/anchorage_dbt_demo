@@ -1,0 +1,13 @@
+target/
+dbt_packages/
+logs/
+*.duckdb
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.DS_Store
+.venv/
+.venv312/
+package-lock.yml

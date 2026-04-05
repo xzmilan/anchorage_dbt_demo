@@ -1,0 +1,11 @@
+asset_id,symbol,asset_name,asset_type,protocol,is_stakeable,min_stake_amount,unbonding_days,coingecko_id
+ASSET_BTC,BTC,Bitcoin,custody_only,Bitcoin,False,0.0,0,bitcoin
+ASSET_ETH,ETH,Ethereum,staking,Ethereum,True,32.0,0,ethereum
+ASSET_SOL,SOL,Solana,staking,Solana,True,1.0,2,solana
+ASSET_DOT,DOT,Polkadot,staking,Polkadot,True,10.0,28,polkadot
+ASSET_ADA,ADA,Cardano,staking,Cardano,True,10.0,0,cardano
+ASSET_ATOM,ATOM,Cosmos,staking,Cosmos,True,1.0,21,cosmos
+ASSET_AVAX,AVAX,Avalanche,staking,Avalanche,True,25.0,0,avalanche-2
+ASSET_MATIC,MATIC,Polygon,staking,Polygon,True,1.0,3,matic-network
+ASSET_USDC,USDC,USD Coin,stablecoin,Ethereum,False,0.0,0,usd-coin
+ASSET_USDT,USDT,Tether,stablecoin,Ethereum,False,0.0,0,tether
