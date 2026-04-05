@@ -1,0 +1,132 @@
+# report_configs/custody_monthly.yml
+#
+# Config-driven report definition — Monthly Custody Statement
+#
+# Purpose:
+#   This file is the ONLY thing you write to add or modify a report type.
+#   generate_report_models.py reads this config and writes the dbt SQL model.
+#
+# Design principle:
+#   Report types should be config, not code. The 100th report type should
+#   be as easy to add as the 1st. An engineer should not need to know
+#   SQL templating to add a new client segment filter or column set.
+#
+# Ownership: Reporting & Statements team owns all files under report_configs/.
+#            Platform team should never need to touch this directory.
+
+report_id: custody_monthly
+display_name: "Monthly Custody Statement"
+description: >
+  Period-end custody holdings statement for all approved institutional clients.
+  Includes current holdings, period-over-period changes, and staking rewards
+  where applicable.
+
+version: "1.0"
+status: active       # active | draft | deprecated
+
+# ---------------------------------------------------------------------------
+# Source model — the business view this report reads from
+# ---------------------------------------------------------------------------
+source_model: MonthlyCustodyStatement     # ref() in dbt
+
+# ---------------------------------------------------------------------------
+# Client eligibility filter
+# Only clients matching ALL conditions below appear in this report.
+# ---------------------------------------------------------------------------
+client_filters:
+  - field: KycStatus
+    operator: equals
+    value: "APPROVED"
+  - field: IsActive
+    operator: equals
+    value: true
+  - field: CustomerType
+    operator: in
+    values: ["INSTITUTIONAL", "HEDGE_FUND", "ASSET_MANAGER", "PENSION_FUND"]
+
+# ---------------------------------------------------------------------------
+# Column set — columns included in the delivered statement
+# order: display order in the output
+# label: client-facing column name (overrides the dbt column name if set)
+# include_if: conditional inclusion (null = always include)
+# ---------------------------------------------------------------------------
+columns:
+  - name: PeriodLabel
+    label: "Statement Period"
+    order: 1
+  - name: CustomerName
+    label: "Client Name"
+    order: 2
+  - name: Symbol
+    label: "Asset"
+    order: 3
+  - name: AssetName
+    label: "Asset Name"
+    order: 4
+  - name: PeriodEndQuantity
+    label: "Quantity Held"
+    order: 5
+  - name: PeriodEndPriceUSD
+    label: "Price (USD)"
+    order: 6
+  - name: PeriodEndValuationUSD
+    label: "Market Value (USD)"
+    order: 7
+  - name: QuantityChangePeriodOverPeriod
+    label: "Quantity Change (MoM)"
+    order: 8
+  - name: ValuationChangePeriodOverPeriodUSD
+    label: "Value Change (MoM, USD)"
+    order: 9
+  - name: ValuationChangePctPeriodOverPeriod
+    label: "Value Change (MoM, %)"
+    order: 10
+  - name: SettledNetRewards
+    label: "Settled Staking Rewards (USD)"
+    order: 11
+    include_if: IsStakeable = true       # Only shown for staking assets
+  - name: NetPendingRewards
+    label: "Pending Rewards (USD)"
+    order: 12
+    include_if: IsStakeable = true
+  - name: TotalPositionValueWithNetpenUSD
+    label: "Total Economic Exposure (USD)"
+    order: 13
+  - name: TotalFeesUSD
+    label: "Fees Charged (USD)"
+    order: 14
+  - name: CustodianLedgerRef
+    label: "Custodian Reference"
+    order: 15
+  - name: StatementId
+    label: "Statement ID"
+    order: 16
+    note: "Unique ID for this statement row — used as delivery idempotency key"
+
+# ---------------------------------------------------------------------------
+# Delivery configuration
+# ---------------------------------------------------------------------------
+delivery:
+  format: csv                          # csv | pdf | json | api
+  transport: sftp                      # sftp | s3 | api_push | email
+  filename_template: "custody_statement_{client_id}_{period}.csv"
+  destination_path: "/statements/custody/monthly/{period}/"
+  encrypt: true                        # PGP encrypt before SFTP drop
+  delivery_confirmation_required: true # Airflow waits for SFTP acknowledgement
+
+# ---------------------------------------------------------------------------
+# Schedule
+# ---------------------------------------------------------------------------
+schedule:
+  frequency: monthly
+  run_after_dag: month_end_close       # Only runs as part of this DAG
+  cutoff_day: 2                        # Available to clients by 2nd of month
+
+# ---------------------------------------------------------------------------
+# Audit requirements
+# ---------------------------------------------------------------------------
+audit:
+  retention_years: 7                   # SOX 7-year record retention
+  immutable_after_delivery: true       # Once delivered, row is locked
+  delivery_log_table: "delivery_audit_log"
+  sox_relevant: true

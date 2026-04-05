@@ -1,0 +1,303 @@
+# platform_data_contracts.yml
+#
+# Data Contracts — Reporting & Statements team → Platform team
+#
+# Purpose:
+#   This file defines what the Reporting & Statements team REQUIRES
+#   from the Platform team's Semantic_Anchorage layer to generate
+#   correct, auditable client statements.
+#
+#   This is NOT a dbt schema file. It is an architectural contract:
+#   a formal specification of grain, freshness, required columns,
+#   and acceptance criteria. The Platform team owns delivery.
+#   The Reporting & Statements team owns these requirements.
+#
+# Process:
+#   When the Reporting & Statements team needs a new column, grain,
+#   or freshness guarantee, they open a PR updating this file.
+#   The Platform team reviews, accepts or negotiates, then implements.
+#   This is the handoff boundary — not a Slack message.
+#
+# Column-level tests listed here map directly to dbt tests that the
+# Platform team must pass in their own CI before changes are merged.
+
+version: 1
+owner: reporting-statements-team
+platform_team_contact: platform-team
+last_reviewed: "2025-03-01"
+
+contracts:
+
+  - table: CustodyPositions
+    schema: Semantic_Anchorage
+    description: >
+      Position snapshots from the custodian ledger.
+      Required by: CustodyBalancesByPeriod → ClientPeriodPositions → MonthlyCustodyStatement
+    grain: one row per (CustomerId, AssetId, PositionDate)
+    freshness:
+      warn_after: 12 hours
+      error_after: 24 hours
+      critical_note: >
+        Period-end snapshot must be available by 04:00 UTC on the 1st of each month.
+        If the custodian feed is delayed, the Reporting & Statements team cannot
+        generate statements. SLA breach = notify on-call immediately.
+    contract_enforced: true        # dbt contract: enforced: true is required
+    required_columns:
+      - name: ID
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: CustomerId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+        note: Must be SHA-256 hashed at source. Raw PII must not appear here.
+      - name: AssetId
+        data_type: STRING
+        tests: [not_null, relationships_to_ref_assets]
+        critical: true
+      - name: PositionDate
+        data_type: DATE
+        tests: [not_null]
+        critical: true
+      - name: Quantity
+        data_type: NUMERIC
+        tests: [not_null, dbt_utils.accepted_range_min_0]
+        critical: true
+        note: >
+          Must be non-negative. A negative quantity means a data error, not a
+          short position. Shorts are not representable in this schema.
+      - name: PriceUSD
+        data_type: NUMERIC
+        tests: [not_null, dbt_utils.accepted_range_min_0]
+        critical: true
+      - name: ValuationUSD
+        data_type: NUMERIC
+        tests: [not_null]
+        critical: true
+        note: >
+          Must equal Quantity × PriceUSD within $0.01.
+          The LedgerBalanceTieOut model enforces this. If it doesn't match,
+          the period close gate will fail.
+      - name: CustodianLedgerRef
+        data_type: STRING
+        tests: [not_null_for_period_end_snapshots]
+        critical: true
+        note: >
+          The authoritative reference from the custodian confirming their ledger
+          agrees with this position. NULL = unconfirmed = statement cannot ship.
+          For intraday snapshots, NULL is acceptable.
+          For period-end (last snapshot of the month), NOT NULL is required.
+
+  - table: StakingEvents
+    schema: Semantic_Anchorage
+    description: >
+      Staking reward events from the protocol oracle.
+      Required by: StakingRewardsByPeriod → ClientPeriodPositions → MonthlyCustodyStatement
+    grain: one row per staking reward event (CustomerId, AssetId, EventDate, RewardType)
+    freshness:
+      warn_after: 6 hours
+      error_after: 12 hours
+    contract_enforced: false       # Requested: contract enforcement by Q3 2025
+    required_columns:
+      - name: ID
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: CustomerId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: AssetId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: GrossAmount
+        data_type: NUMERIC
+        tests: [not_null, dbt_utils.accepted_range_min_0]
+        critical: true
+      - name: NetAmount
+        data_type: NUMERIC
+        tests: [not_null]
+        critical: true
+      - name: FeeAmount
+        data_type: NUMERIC
+        tests: [not_null, dbt_utils.accepted_range_min_0]
+        critical: true
+        note: GrossAmount - FeeAmount should equal NetAmount within $0.0001.
+      - name: RewardState
+        data_type: STRING
+        tests: [not_null, accepted_values_pending_settled]
+        critical: true
+        note: >
+          pending = unbonding, not yet distributable.
+          settled = liquid, included in client statement rewards totals.
+          No other values are acceptable — any new states must be negotiated
+          with the Reporting & Statements team before the Platform team ships them.
+      - name: EventDate
+        data_type: DATE
+        tests: [not_null]
+        critical: true
+
+  - table: FeeEvents
+    schema: Semantic_Anchorage
+    description: >
+      Fee billing records from the billing system.
+      Required by: FeeAccrualsByPeriod → ClientPeriodPositions → PeriodCloseGate
+    grain: one row per fee invoice line (CustomerId, AssetId, FeeType, FeeDate)
+    freshness:
+      warn_after: 24 hours
+      error_after: 48 hours
+      critical_note: >
+        All fees for a billing period must be loaded before the period close gate
+        runs. Partial fee loads result in AllFeesBilled = FALSE and block delivery.
+    contract_enforced: false
+    required_columns:
+      - name: ID
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: CustomerId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: AssetId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: FeeType
+        data_type: STRING
+        tests: [not_null, accepted_values_custody_staking_trading]
+        critical: false
+        note: >
+          Adding a new FeeType requires advance notice to the Reporting & Statements
+          team. New fee types affect statement formatting and client disclosure.
+      - name: FeeAmount
+        data_type: NUMERIC
+        tests: [not_null, dbt_utils.accepted_range_min_0]
+        critical: true
+      - name: BillingStatus
+        data_type: STRING
+        tests: [not_null, accepted_values_invoiced_pending]
+        critical: true
+      - name: InvoiceReference
+        data_type: STRING
+        note: >
+          Required when BillingStatus = 'invoiced'.
+          NULL with BillingStatus = 'invoiced' is a data error.
+          PeriodCloseGate check 'all_fees_billed' will fail.
+
+  - table: FinancialEvents
+    schema: Semantic_Anchorage
+    description: >
+      Canonical SOX append-only financial event log.
+      Required by: ReconciliationSummary → PeriodCloseGate
+    grain: one row per financial event (immutable, never updated)
+    freshness:
+      warn_after: 1 hour
+      error_after: 4 hours
+    contract_enforced: false
+    immutability_required: true
+    immutability_note: >
+      This table is an audit log. Records may never be updated or deleted.
+      Corrections are recorded as new correcting entries with event_type = 'REVERSAL'.
+      The Reporting & Statements team relies on this guarantee for SOX compliance.
+    required_columns:
+      - name: ID
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: CustomerId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: AssetId
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: EventType
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: GrossAmount
+        data_type: NUMERIC
+        tests: [not_null]
+        critical: true
+      - name: NetAmount
+        data_type: NUMERIC
+        tests: [not_null]
+        critical: true
+      - name: EventDate
+        data_type: DATE
+        tests: [not_null]
+        critical: true
+      - name: IsPending
+        data_type: BOOLEAN
+        tests: [not_null]
+        critical: true
+        note: >
+          FALSE = settled, included in statement.
+          TRUE = open, blocks period close gate.
+          All events must be FALSE before month-end close.
+
+  - table: Customers
+    schema: Semantic_Anchorage
+    description: >
+      Institutional client master. KycStatus gates statement delivery.
+    grain: one row per client (CustomerId)
+    freshness:
+      warn_after: 48 hours
+      error_after: 72 hours
+    required_columns:
+      - name: CustomerId
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: CustomerName
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: KycStatus
+        data_type: STRING
+        tests: [not_null, accepted_values_approved_pending_suspended]
+        critical: true
+        note: >
+          Only APPROVED clients receive statements.
+          PeriodCloseGate check 'kyc_approved_only' enforces this.
+          If a client's KycStatus is changed from APPROVED to PENDING or SUSPENDED
+          mid-period, the Reporting & Statements team must be notified immediately —
+          their statement must be withheld even if already generated.
+      - name: IsActive
+        data_type: BOOLEAN
+        tests: [not_null]
+        critical: true
+
+  - table: ReferenceAssets
+    schema: Semantic_Anchorage
+    description: >
+      Canonical asset reference. IsStakeable drives staking report inclusion.
+    grain: one row per asset (AssetId)
+    freshness:
+      warn_after: 7 days
+      error_after: 14 days
+    required_columns:
+      - name: AssetId
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: Symbol
+        data_type: STRING
+        tests: [not_null, unique]
+        critical: true
+      - name: AssetName
+        data_type: STRING
+        tests: [not_null]
+        critical: true
+      - name: IsStakeable
+        data_type: BOOLEAN
+        tests: [not_null]
+        critical: true
+        note: >
+          Controls whether staking reward columns appear in client statements.
+          A change from FALSE to TRUE for a live asset requires review with
+          the Reporting & Statements team before the Platform team merges it.

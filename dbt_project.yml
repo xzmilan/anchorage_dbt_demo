@@ -27,3 +27,22 @@ models:
       +materialized: view
       +tags: ['business_view_anchorage']
 
+    # -----------------------------------------------------------------------
+    # Reporting & Statements — owned by the Reporting & Statements team.
+    # These layers sit on top of Business_View_Anchorage and are NOT owned
+    # by the Platform team. They require the period-close gate to pass before
+    # they flow into the delivery engine.
+    # -----------------------------------------------------------------------
+    Reconciliation:
+      +schema: Reconciliation_Anchorage
+      +materialized: view
+      +tags: ['reconciliation']
+    Validation:
+      +schema: Validation_Anchorage
+      +materialized: view
+      +tags: ['validation']
+    Reporting_Statements:
+      +schema: Reporting_Statements_Anchorage
+      +materialized: view
+      +tags: ['reporting_statements']
+
