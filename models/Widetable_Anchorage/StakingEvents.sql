@@ -8,5 +8,5 @@ SELECT
   StakingEvents
   , StakingEventsCalc
 FROM {{ source('anchorage_data_platform', 'StakingEvents') }} AS StakingEvents
-JOIN {{ source('anchorage_calc', 'StakingEventsCalc') }} AS StakingEventsCalc
+JOIN {{ source('Calc_Anchorage', 'StakingEventsCalc') }} AS StakingEventsCalc
   ON StakingEventsCalc.ID = StakingEvents.ID

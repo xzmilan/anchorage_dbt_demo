@@ -8,5 +8,5 @@ SELECT
   CustodyPositions
   , CustodyPositionsCalc
 FROM {{ source('anchorage_data_platform', 'CustodyPositions') }} AS CustodyPositions
-JOIN {{ source('anchorage_calc', 'CustodyPositionsCalc') }} AS CustodyPositionsCalc
+JOIN {{ source('Calc_Anchorage', 'CustodyPositionsCalc') }} AS CustodyPositionsCalc
   ON CustodyPositionsCalc.ID = CustodyPositions.ID
