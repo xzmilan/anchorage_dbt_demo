@@ -58,12 +58,12 @@ jobs:
             target: prod
           EOF
 
-      # Step 1: assemble micro-calcs → BigQuery views in Calc_Anchorage
-      # This mirrors the AO CI/CD assembly step that runs before dbt.
+      # Step 1: regenerate combined dbt model files from calcs/ source files.
+      # Writes one combined .sql per group to models/Calc_Anchorage/.
       - name: Assemble calc views (generate_calc_views.py)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
-        run: python generate_calc_views.py
+        run: python generate_calc_views.py --generate-dbt
 
       - name: dbt deps
         run: dbt deps --profiles-dir ~/.dbt
@@ -176,11 +176,11 @@ jobs:
             target: prod
           EOF
 
-      # Deploy step 1: assemble micro-calcs into Calc_Anchorage views
+      # Deploy step 1: regenerate combined dbt model files from calcs/ source files.
       - name: Assemble calc views
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
-        run: python generate_calc_views.py
+        run: python generate_calc_views.py --generate-dbt
 
       - name: dbt deps
         run: dbt deps --profiles-dir ~/.dbt

@@ -71,7 +71,7 @@ jobs:
       - name: Assemble calc views (CI)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
-        run: python generate_calc_views.py
+        run: python generate_calc_views.py --generate-dbt
 
       - name: dbt deps
         run: dbt deps --profiles-dir ~/.dbt

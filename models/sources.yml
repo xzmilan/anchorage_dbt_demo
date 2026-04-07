@@ -35,20 +35,5 @@ sources:
       - name: FinancialEvents
         description: "Canonical financial event log. SOX append-only audit trail."
 
-  - name: Calc_Anchorage
-    database: sigma-method-453023-a4
-    schema: Calc_Anchorage
-    description: >
-      Assembled calc views — created by generate_calc_views.py before dbt run.
-      Each view unions all micro-calc SQL files under the corresponding Calc_Anchorage/
-      subfolder into a single flat view. New calcs are picked up automatically:
-      add a .sql file to the subfolder and re-run generate_calc_views.py.
-    tables:
-      - name: CustodyPositionsCalc
-        description: "Assembled calcs for CustodyPositions. See models/Calc_Anchorage/CustodyPositionsCalc/ for individual calc definitions."
-      - name: StakingEventsCalc
-        description: "Assembled calcs for StakingEvents. See models/Calc_Anchorage/StakingEventsCalc/ for individual calc definitions."
-      - name: FeeEventsCalc
-        description: "Assembled calcs for FeeEvents. See models/Calc_Anchorage/FeeEventsCalc/ for individual calc definitions."
-      - name: FinancialEventsCalc
-        description: "Assembled calcs for FinancialEvents. See models/Calc_Anchorage/FinancialEventsCalc/ for individual calc definitions."
+  # Calc_Anchorage tables are now dbt models (models/Calc_Anchorage/*.sql).
+  # Reference them with ref('CustodyPositionsCalc') etc. — not source().

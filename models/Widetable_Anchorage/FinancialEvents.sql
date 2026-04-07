@@ -8,5 +8,5 @@ SELECT
   FinancialEvents
   , FinancialEventsCalc
 FROM {{ source('anchorage_data_platform', 'FinancialEvents') }} AS FinancialEvents
-JOIN {{ source('Calc_Anchorage', 'FinancialEventsCalc') }} AS FinancialEventsCalc
+JOIN {{ ref('FinancialEventsCalc') }} AS FinancialEventsCalc
   ON FinancialEventsCalc.ID = FinancialEvents.ID
