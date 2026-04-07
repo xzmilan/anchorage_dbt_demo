@@ -25,11 +25,4 @@ anchorage_reporting_demo:
       threads: 4
       timeout_seconds: 300
 
-    # ── Local fallback: DuckDB (no GCP auth needed) ────────────────────────
-    # dbt run --target local --profiles-dir .
-    local:
-      type: duckdb
-      path: "dev.duckdb"
-      threads: 4
-      schema: main
 
