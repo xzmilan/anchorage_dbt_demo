@@ -113,10 +113,10 @@ jobs:
             "chardet==5.2.0"
           pip install --force-reinstall --no-cache-dir "chardet==5.2.0"
 
-      - name: SQLFluff lint — micro_calcs
+      - name: SQLFluff lint — Calc_Anchorage
         run: |
-          echo "=== micro_calcs Lint ===" > sqlfluff-report.txt
-          sqlfluff lint micro_calcs/ \
+          echo "=== Calc_Anchorage Lint ===" > sqlfluff-report.txt
+          sqlfluff lint models/Calc_Anchorage/ \
             --dialect bigquery \
             --templater jinja \
             --format human >> sqlfluff-report.txt 2>&1 || true

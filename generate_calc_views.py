@@ -34,7 +34,7 @@ from pathlib import Path
 PROJECT = 'sigma-method-453023-a4'
 SEMANTIC_DATASET = 'Semantic_Anchorage'
 CALC_DATASET = 'Calc_Anchorage'
-CALC_ROOT = Path(__file__).parent / 'micro_calcs'
+CALC_ROOT = Path(__file__).parent / 'models' / 'Calc_Anchorage'
 
 # Maps dbt source() names to BigQuery dataset paths
 SOURCE_MAP = {
