@@ -105,7 +105,7 @@ SELECT
       'None'
     ) AS SampleExceptions
 FROM {{ source('anchorage_data_platform', 'FinancialEvents') }} AS FinancialEvents
-JOIN {{ source('anchorage_calc', 'FinancialEventsCalc') }} AS FinancialEventsCalc
+JOIN {{ source('Calc_Anchorage', 'FinancialEventsCalc') }} AS FinancialEventsCalc
   ON FinancialEventsCalc.ID = FinancialEvents.ID
 
 UNION ALL
@@ -136,7 +136,7 @@ SELECT
       'None'
     ) AS SampleExceptions
 FROM {{ source('anchorage_data_platform', 'FeeEvents') }} AS FeeEvents
-JOIN {{ source('anchorage_calc', 'FeeEventsCalc') }} AS FeeEventsCalc
+JOIN {{ source('Calc_Anchorage', 'FeeEventsCalc') }} AS FeeEventsCalc
   ON FeeEventsCalc.ID = FeeEvents.ID
 
 UNION ALL
