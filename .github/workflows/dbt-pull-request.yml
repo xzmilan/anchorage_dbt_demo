@@ -69,6 +69,8 @@ jobs:
           EOF
 
       - name: Assemble calc views (CI)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
         run: python generate_calc_views.py
 
       - name: dbt deps

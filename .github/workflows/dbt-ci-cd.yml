@@ -61,6 +61,8 @@ jobs:
       # Step 1: assemble micro-calcs → BigQuery views in Calc_Anchorage
       # This mirrors the AO CI/CD assembly step that runs before dbt.
       - name: Assemble calc views (generate_calc_views.py)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
         run: python generate_calc_views.py
 
       - name: dbt deps
@@ -176,6 +178,8 @@ jobs:
 
       # Deploy step 1: assemble micro-calcs into Calc_Anchorage views
       - name: Assemble calc views
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
         run: python generate_calc_views.py
 
       - name: dbt deps
