@@ -14,7 +14,7 @@ WITH StakingEvents AS (
     , WtStakingEvents.StakingEvents.GrossAmount AS GrossAmount
     , WtStakingEvents.StakingEvents.FeeAmount AS FeeAmount
     , WtStakingEvents.StakingEventsCalc.EarnPeriod AS EarnPeriod
-    , WtStakingEvents.StakingEventsCalc.IsSettled AS IsSettled
+    , WtStakingEvents.StakingEventsCalc.IsSettledStaking AS IsSettled
     , WtStakingEvents.StakingEventsCalc.UnbondingCategory AS UnbondingCategory
   FROM {{ ref('StakingEvents') }} AS WtStakingEvents
 )
