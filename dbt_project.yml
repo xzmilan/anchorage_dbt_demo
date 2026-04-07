@@ -14,10 +14,6 @@ clean-targets:
 
 models:
   anchorage_reporting_demo:
-    Calc_Anchorage:
-      +schema: Calc_Anchorage
-      +materialized: table
-      +tags: ['calc_anchorage']
     Widetable_Anchorage:
       +schema: Widetable_Anchorage
       +materialized: table
