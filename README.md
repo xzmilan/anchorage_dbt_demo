@@ -302,7 +302,7 @@ sqlfluff lint models/ --dialect bigquery --templater jinja
 
 ---
 
-*Built by Yenny (Steven) Passanante — demonstrating 6 years of enterprise semantic layer governance applied to the Anchorage Digital reporting domain.*
+*Built by Steven Passanante — demonstrating 6 years of enterprise semantic layer governance applied to the Anchorage Digital reporting domain.*
 
 ---
 
