@@ -15,7 +15,7 @@ The two repos mirror the AO team structure:
 
 | Repo | Layer | Owner |
 |---|---|---|
-| [`anchorage_data_platform`](../anchorage_data_platform) | `Semantic_Anchorage` | Platform team |
+| [`anchorage_data_platform`](https://github.com/xzmilan/anchorage_data_platform) | `Semantic_Anchorage` | Platform team |
 | this repo | `Calc_Anchorage` · `Widetable_Anchorage` · `Business_View_Anchorage` | Asset, Finance, Reporting teams |
 
 ---
